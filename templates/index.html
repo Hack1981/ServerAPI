@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat com IA</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        .chat-container {
+            width: 1280px;
+            height: 720px;
+            background-color: #ffffff;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .chat-header {
+            background-color: #075e54;
+            color: #ffffff;
+            padding: 15px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 22px;
+        }
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+            background-color: #e5ddd5;
+            overflow-x: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        .message {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 8px;
+            max-width: 80%;
+        }
+        .message.user {
+            background-color: #dcf8c6;
+            align-self: flex-end;
+        }
+        .message.ai {
+            background-color: #ffffff;
+            align-self: flex-start;
+        }
+        .message.thinking {
+            background-color: #eeeeee;
+            align-self: flex-start;
+            font-style: italic;
+            opacity: 0.8;
+        }
+        .chat-footer {
+            display: flex;
+            padding: 15px;
+            background-color: #f0f0f0;
+            border-top: 1px solid #dddddd;
+        }
+        .chat-footer input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #cccccc;
+            border-radius: 20px;
+            outline: none;
+            font-size: 16px;
+        }
+        .chat-footer button {
+            margin-left: 10px;
+            padding: 10px 20px;
+            background-color: #075e54;
+            color: #ffffff;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .chat-footer button:hover {
+            background-color: #054c44;
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            Chat com IA
+        </div>
+        <div class="chat-messages" id="chatMessages">
+            <!-- As mensagens do chat aparecerão aqui -->
+        </div>
+        <div class="chat-footer">
+            <input type="text" id="question" placeholder="Digite sua mensagem..." required>
+            <button onclick="sendMessage()">Enviar</button>
+        </div>
+    </div>
+
+    <script>
+        // Função para enviar mensagem
+        async function sendMessage() {
+            const questionInput = document.getElementById('question');
+            const question = questionInput.value;
+            if (!question) return;
+
+            // Adicionar mensagem do usuário na tela
+            addMessage(question, 'user');
+
+            // Limpar o campo de entrada
+            questionInput.value = '';
+
+            // Adicionar o balão "Pensando..."
+            const thinkingMessage = addMessage("Pensando...", 'thinking');
+
+            try {
+                // Enviar pergunta para o servidor
+                const response = await fetch('/api/send_question', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ question })
+                });
+
+                const data = await response.json();
+
+                // Remover o balão "Pensando..."
+                thinkingMessage.remove();
+
+                // Exibir a resposta do servidor
+                if (data.error) {
+                    addMessage("Erro: " + data.error, 'ai');
+                } else {
+                    addMessage(formatResponse(data.response_text), 'ai');
+                }
+            } catch (error) {
+                // Remover o balão "Pensando..." em caso de erro
+                thinkingMessage.remove();
+                addMessage("Erro ao obter resposta. Tente novamente.", 'ai');
+            }
+        }
+
+        // Função para adicionar mensagens ao chat
+        function addMessage(text, sender) {
+            const chatMessages = document.getElementById('chatMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('message', sender);
+            messageDiv.innerHTML = text; // Usar innerHTML para suportar a formatação
+            chatMessages.appendChild(messageDiv);
+
+            // Scroll para a última mensagem
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+
+            return messageDiv; // Retorna o elemento para manipulação futura
+        }
+
+        // Função para formatar a resposta com HTML (negrito, itálico, etc)
+        function formatResponse(responseText) {
+            // Substitui as marcações do Markdown por tags HTML
+            return responseText
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')  // Negrito
+                .replace(/\*(.*?)\*/g, '<em>$1</em>')  // Itálico
+                .replace(/\n/g, '<br>');  // Quebras de linha
+        }
+    </script>
+</body>
+</html>
